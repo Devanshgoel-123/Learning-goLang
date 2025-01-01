@@ -15,6 +15,7 @@ import (
 
 	"github.com/Devanshgoel-123/students-api/internal/config"
 	"github.com/Devanshgoel-123/students-api/internal/http/handlers/student"
+	"github.com/Devanshgoel-123/students-api/internal/storage/sqlite"
 )
 
 func main(){
@@ -23,11 +24,20 @@ func main(){
 	//load Config -> this can be done by running mustLoad function inside the internal folder
 	cfg := config.MustLoad()
 	//database setup
+
+	storage,err:=sqlite.New(cfg)
+	if(err!=nil){
+		log.Fatal("Error while connecting to the Database",err)
+	}
+
+	slog.Info("storage initialized", slog.String("env",cfg.Env), slog.String("version","1.0.0"))
+
 	//setup router
 
 	router:=http.NewServeMux()
 
-	router.HandleFunc("POST /api/students",student.New())
+	router.HandleFunc("POST /api/students",student.New(storage))
+	router.HandleFunc("GET /api/students/{id}",student.GetStudentById(storage))
 	//setup server
 
 	server:=http.Server{
@@ -52,9 +62,9 @@ func main(){
 	slog.Info("Shutting down the server")
 	ctx, cancel:=context.WithTimeout(context.Background(),5*time.Second)
 	defer cancel()
-	err:=server.Shutdown(ctx);
-	if err!=nil{
-		slog.Error("failed to shutdown server", slog.String("error",err.Error()))
+	err2:=server.Shutdown(ctx);
+	if err2!=nil{
+		slog.Error("failed to shutdown server", slog.String("error",err2.Error()))
 	}
 
 	slog.Info("server shutdown succesfully")
